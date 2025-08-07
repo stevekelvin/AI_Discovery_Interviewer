@@ -11,7 +11,7 @@ if "conversation_started" not in st.session_state:
     st.session_state.conversation_started = False
 
 # OpenRouter + DeepSeek API Setup
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 LLM_MODEL = "deepseek-chat"  # you can also try "mistral", "openchat", etc.
 
 # Function to query OpenRouter API with DeepSeek
