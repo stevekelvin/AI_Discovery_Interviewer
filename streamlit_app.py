@@ -1,77 +1,87 @@
+
 import streamlit as st
 import requests
 
-# Set page title
-st.set_page_config(page_title="AI Discovery Interview Assistant")
-
-# Initialize session state
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "conversation_started" not in st.session_state:
-    st.session_state.conversation_started = False
-
-# OpenRouter + DeepSeek API Setup
-OPENROUTER_API_KEY = "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"
-LLM_MODEL = "deepseek-chat"  # you can also try "mistral", "openchat", etc.
-
-# Function to query OpenRouter API with DeepSeek
-def get_llm_response(messages):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        #"HTTP-Referer": "https://yourdomain.com",  # Replace with your site or GitHub repo
-        "HTTP-Referer": "https://github.com/stevekelvin/AI_Discovery_Interviewer",  # Replace with your site or GitHub repo
-        
-    }
-    body = {
-        "model": LLM_MODEL,
-        "messages": messages,
-    }
-    response = requests.post(url, headers=headers, json=body)
-    response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
-
-# Start the conversation with first question if not started
-if not st.session_state.conversation_started:
-    system_prompt = {
-        "role": "system",
-        "content": (
-            "You are an AI Discovery Interview Assistant. "
-            "Your job is to ask structured, intelligent questions to a company representative. "
-            "The goal is to understand their operations, workflows, and pain points — especially to find opportunities to apply AI. "
-            "Begin by asking your first discovery question about how their operations or teams work."
-        )
-    }
-    st.session_state.chat_history.append(system_prompt)
-
-    first_response = get_llm_response(st.session_state.chat_history)
-    st.session_state.chat_history.append({"role": "assistant", "content": first_response})
-    st.session_state.conversation_started = True
-
-# Display chat messages
+st.set_page_config(page_title="AI Discovery Interview", layout="wide")
 st.title("🤖 AI Discovery Interview Tool")
-st.subheader("Smart interview to uncover automation & AI opportunities")
+st.markdown("This tool conducts a structured interview to uncover AI opportunities in your organization.")
 
-for msg in st.session_state.chat_history:
-    if msg["role"] != "system":
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+# Configuration
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
+MODEL = "deepseek/deepseek-chat-v3-0324:free"
 
-# User input box
-user_input = st.chat_input("Your answer or clarification...")
+# Ask user for API key securely
+api_key = st.sidebar.text_input("Enter your OpenRouter API Key", type="password")
 
-if user_input:
-    # Append user input
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
+# Session state initialization
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
+        {
+            "role": "system",
+            "content": (
+                "You are a human AI expert conducting a discovery interview with a company representative. "
+                "Your job is to understand their organization, operations, workflows, and challenges. "
+                "Ask one insightful question at a time. Start broad — identify the type of organization and its functions — then go deeper into specific departments, tasks, tools, inefficiencies, and data flows. "
+                "Speak naturally, like a human professional. Don’t mention AI, don’t say you're starting, and don’t ask about the format. "
+                "Avoid phrases like 'How should we proceed?' or 'Understood.' Don’t reveal the goal is to find AI opportunities — just collect detailed information through intelligent, flowing questions. "
+                "Begin now with the first question."
+            ),
+        }
+    ]
 
-    # Get next AI question or follow-up
-    bot_reply = get_llm_response(st.session_state.chat_history)
-    st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
+def ask_openrouter(prompt, history):
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": MODEL,
+        "messages": history + [{"role": "user", "content": prompt}],
+    }
+    response = requests.post(API_URL, headers=headers, json=payload)
+    # Validate response
+    if response.status_code != 200:
+        st.error(f"API request failed: {response.status_code} - {response.text}")
+        st.stop()
 
-    # Show latest exchange
-    with st.chat_message("user"):
-        st.markdown(user_input)
-    with st.chat_message("assistant"):
-        st.markdown(bot_reply)
+    try:
+        result = response.json()
+        message = result["choices"][0]["message"]["content"]
+    except Exception as e:
+        st.error(f"Failed to parse response: {e}\nFull response: {response.text}")
+        st.stop()
 
+
+
+    return message
+
+# Display chat history
+for message in st.session_state.chat_history[1:]:
+    if message["role"] == "assistant":
+        with st.chat_message("assistant"):
+            st.markdown(message["content"])
+    elif message["role"] == "user":
+        with st.chat_message("user"):
+            st.markdown(message["content"])
+
+# Start interview with first question
+if len(st.session_state.chat_history) == 1:
+    if api_key:
+        with st.spinner("Thinking..."):
+            question = ask_openrouter("", st.session_state.chat_history)
+            if question:
+                st.session_state.chat_history.append({"role": "assistant", "content": question})
+                st.rerun()
+    else:
+        st.warning("Please enter your OpenRouter API key in the sidebar.")
+
+# User input
+if api_key and len(st.session_state.chat_history) > 1:
+    user_input = st.chat_input("Your response")
+    if user_input:
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        with st.spinner("Thinking..."):
+            reply = ask_openrouter("", st.session_state.chat_history)
+            if reply:
+                st.session_state.chat_history.append({'role': 'assistant', 'content': reply})
+                st.rerun()
