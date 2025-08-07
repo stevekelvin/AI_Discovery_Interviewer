@@ -7,7 +7,9 @@ st.title("🤖 AI Discovery Interview Tool")
 st.markdown("This tool conducts a structured interview to uncover AI opportunities in your organization.")
 
 # Configuration
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
+#API_URL = "https://openrouter.ai/api/v1/chat/completions"
+API_URL = "https://openrouter.ai/api/v1"
+
 MODEL = "deepseek/deepseek-chat-v3-0324:free"
 
 # Ask user for API key securely
