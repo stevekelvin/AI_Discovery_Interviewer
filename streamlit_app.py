@@ -20,7 +20,9 @@ def get_llm_response(messages):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://yourdomain.com",  # Replace with your site or GitHub repo
+        #"HTTP-Referer": "https://yourdomain.com",  # Replace with your site or GitHub repo
+        "HTTP-Referer": "https://github.com/stevekelvin/AI_Discovery_Interviewer",  # Replace with your site or GitHub repo
+        
     }
     body = {
         "model": LLM_MODEL,
